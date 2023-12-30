@@ -9,12 +9,29 @@ pub use crate::parser::*;
 pub use crate::scope::*;
 pub use crate::value::*;
 
+pub(crate) type RcCell<T> = Rc<RefCell<T>>;
+
 #[inline(always)]
 pub(crate) fn cell<T>(v: T) -> RefCell<T> {
     RefCell::new(v)
 }
 
 #[inline(always)]
-pub(crate) fn rc_cell<T>(v: T) -> Rc<RefCell<T>> {
+pub fn rc_cell<T>(v: T) -> RcCell<T> {
     Rc::new(cell(v))
+}
+
+#[inline(always)]
+pub(crate) fn rc_clone<T>(v: Rc<T>) -> Rc<T>
+where
+    T: Clone,
+{
+    Rc::new((*v).clone())
+}
+
+#[macro_export]
+macro_rules! string_list {
+    ($($x:expr),*) => {
+        [$(String::from($x)),*]
+    };
 }

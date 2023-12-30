@@ -1,7 +1,29 @@
 use crate::prelude::*;
 
-pub type ValueCell = RefCell<Value>;
-pub type ValueRc = Rc<ValueCell>;
+pub type ValueRc = RcCell<Value>;
+
+pub trait FunctorInner: Fn(&mut Scope) -> Result<ValueRc, RuntimeError> {}
+
+impl<F: 'static + Fn(&mut Scope) -> Result<ValueRc, RuntimeError>> FunctorInner for F {}
+
+#[derive(Clone)]
+pub struct Functor(RcCell<dyn FunctorInner>);
+
+impl Functor {
+    pub fn new<F: 'static + FunctorInner>(f: F) -> Self {
+        Self(rc_cell(f))
+    }
+
+    pub fn call(&self, scope: &mut Scope) -> Result<ValueRc, RuntimeError> {
+        self.0.borrow()(scope)
+    }
+}
+
+impl std::fmt::Debug for Functor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Functor({:x})", self as *const Functor as usize)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -9,7 +31,8 @@ pub enum Value {
     Float(f64),
     Bool(bool),
     Str(String),
-    List(VecDeque<Value>),
+    List(VecDeque<ValueRc>),
+    Functor(Functor),
     Null,
 }
 

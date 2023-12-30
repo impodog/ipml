@@ -25,7 +25,7 @@ impl Display for SyntaxError {
         write!(
             f,
             "IPML Syntax Error occurred at line {}, cursor {}: {}",
-            self.msg, self.line, self.cursor
+            self.line, self.cursor, self.msg
         )
     }
 }
@@ -50,6 +50,6 @@ impl Debug for RuntimeError {
 
 impl Display for RuntimeError {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "IPML Runtime Error: {}", self.msg)
+        write!(f, "{}", self.msg)
     }
 }

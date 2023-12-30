@@ -1,14 +1,8 @@
-func = (
-    
+[msg] | (
+    value =
+"
+Hello, world!
+And there we go.
+"
 )
-
-[struct1] = (
-    str = "Welcome to IPML!"
-    number = -3
-    float = 3.14
-)
-[struct2] = (
-    [inner] = (
-        hello = "Hello, world!"
-    )
-)
+print:[msg]

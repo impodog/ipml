@@ -11,7 +11,7 @@ fn parse_slice(result: &mut BlockVec, slice: &[Token]) -> usize {
                 result.push(Token::Block(block));
             }
             Token::Operator(')') => {
-                return i + 1;
+                return i + 2;
             }
             _ => {
                 result.push(slice[i].clone());
@@ -124,6 +124,7 @@ impl Parser {
 
     fn next_ident(&mut self) -> Result<Token, SyntaxError> {
         let mut symbol = vec![String::new()];
+        symbol.last_mut().unwrap().push(self.next().unwrap());
         while let Some(c) = self.peek() {
             match c {
                 'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => {
@@ -171,7 +172,7 @@ impl Tokenize for Parser {
                 '0'..='9' | '-' => Some(self.next_number()),
                 '"' => Some(self.next_string()),
                 '[' => Some(self.next_tag()),
-                'a'..='z' | 'A'..='Z' | '_' => Some(self.next_ident()),
+                'a'..='z' | 'A'..='Z' | '_' | '$' => Some(self.next_ident()),
                 _ => Some(self.next_operator()),
             }
         } else {

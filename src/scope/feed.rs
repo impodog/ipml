@@ -3,8 +3,9 @@ use crate::prelude::*;
 macro_rules! not_implemented {
     ($self: ident, $name: ident) => {
         Err(RuntimeError::new(format!(
-            "{} is not implemented for {:?}",
+            "{} is not implemented for {}::{}",
             stringify!($name),
+            std::any::type_name::<Self>(),
             $self
         )))
     };
@@ -12,79 +13,26 @@ macro_rules! not_implemented {
 
 pub trait Feed
 where
-    Self: std::fmt::Debug,
+    Self: Debug + Display,
 {
     fn feed(&mut self, _token: &Token) -> Result<ValueRc, RuntimeError> {
         not_implemented!(self, feed)
     }
-}
 
-impl Scope {
-    fn assign(&mut self, lhs: &Token, rhs: &Token) -> Result<(), RuntimeError> {
-        match lhs {
-            Token::Symbol(name) => {
-                let value = match rhs {
-                    Token::Value(value) => value.clone(),
-                    _ => {
-                        return Err(RuntimeError::new(format!(
-                            "[Assign] Expected value at right hand side, but got {:?}",
-                            rhs
-                        )))
-                    }
-                };
-                self.set_value(name, rc_cell(value));
-                Ok(())
-            }
-            Token::Tag(name) => {
-                let scope = match rhs {
-                    Token::Tag(tag) => {
-                        let mut scope = Scope::new();
-                        scope.set_value(tag, rc_cell(Value::Null));
-                        rc_cell(scope)
-                    }
-                    Token::Block(_) => {
-                        let mut scope = Scope::new();
-                        scope.feed(rhs)?;
-                        rc_cell(scope)
-                    }
-                    _ => {
-                        return Err(RuntimeError::new(format!(
-                            "[Assign] Expected tag or block at right hand side, but got {:?}",
-                            rhs
-                        )))
-                    }
-                };
-                self.set_scope(name, scope);
-                Ok(())
-            }
-            _ => Err(RuntimeError::new(format!(
-                "[Assign] Expected symbol or tag at left hand side, but got {:?}",
-                lhs
-            ))),
-        }
-    }
-
-    fn execute(&mut self, lhs: &Token, op: char, rhs: &Token) -> Result<ValueRc, RuntimeError> {
-        match op {
-            '=' => {
-                self.assign(lhs, rhs)?;
-                Ok(rc_cell(Value::Null))
-            }
-            _ => Err(RuntimeError::new(format!(
-                "[Scope] Operator \'{}\' is not supported",
-                op
-            ))),
-        }
+    fn call(&mut self, _scope: &mut Scope) -> Result<ValueRc, RuntimeError> {
+        not_implemented!(self, call)
     }
 }
 
 impl Feed for Scope {
     fn feed(&mut self, token: &Token) -> Result<ValueRc, RuntimeError> {
         match token {
+            Token::Value(value) => Ok(rc_cell(value.clone())),
+            Token::Symbol(name) => Ok(self.query_value(name)),
             Token::Block(block) => {
                 if block.len() % 3 != 0 {
                     return Err(RuntimeError::new(format!(
-                        "[Scope] Executed block length must be a multiple of 3, but got {}",
+                        "[Execute] Executed block length must be a multiple of 3, but got {}",
                         block.len()
                     )));
                 }
@@ -96,7 +44,7 @@ impl Feed for Scope {
                         Token::Operator(op) => op,
                         _ => {
                             return Err(RuntimeError::new(format!(
-                                "[Scope] Expected operator at block position {}, but got {:?}",
+                                "[Execute] Expected operator at block position {}, but got {}",
                                 i + 1,
                                 &block.data()[i + 1]
                             )))
@@ -109,7 +57,7 @@ impl Feed for Scope {
                 Ok(result)
             }
             _ => Err(RuntimeError::new(format!(
-                "[Scope] Scope can only be fed with blocks instead of {:?}",
+                "[Scope] Scope can only be fed with values, symbols, or blocks instead of {}",
                 token
             ))),
         }
