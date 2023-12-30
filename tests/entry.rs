@@ -17,27 +17,20 @@ mod tests {
         }
     }
 
-    fn insert_functors(scope: &mut Scope) {
-        scope.insert_functor(&string_list!("print"), |scope| {
-            let value = scope.query_value(&string_list!("value"));
-            println!("{}", value.borrow());
-            Ok(rc_cell(Value::Null))
-        });
-    }
-
     fn run(token: Token) {
         let mut scope = Scope::new();
-        insert_functors(&mut scope);
+        init_functor(&mut scope);
         let result = scope.feed(&token);
         match result {
-            Ok(value) => println!("File exited: {}", value.borrow()),
+            Ok(_) => {}
             Err(e) => println!("{}", e),
         }
+        println!("Scope: {}", scope);
     }
 
     fn entry(path: &'static str) {
         let tokens = parse(path);
-        //println!("{}", tokens);
+        //println!("{:#?}", tokens);
         run(tokens);
     }
 

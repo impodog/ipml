@@ -1,3 +1,8 @@
+v0.3.0
+- Add custom functor and block decorators
+- Add default non-user functor
+- Fix some other bugs and warnings
+
 v0.2.0
 - Add functor calling
 - Add recursive finding for Scope

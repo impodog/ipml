@@ -2,14 +2,15 @@ use crate::prelude::*;
 
 impl Scope {
     fn do_feed(&mut self, lhs: &Token, rhs: &Token) -> Result<ValueRc, RuntimeError> {
-        self.as_feedable(lhs)?.borrow_mut().feed(rhs)
+        self.as_feedable(lhs)?.borrow_mut().feed(rhs)?;
+        Ok(rc_cell(Value::Null))
     }
 
     fn do_assign(&mut self, lhs: &Token, rhs: &Token) -> Result<(), RuntimeError> {
         match lhs {
             Token::Symbol(name) => {
                 let value = self.as_true_value(rhs)?;
-                self.set_value(name, value);
+                self.set_value(name, value)?;
                 Ok(())
             }
             Token::Tag(name) => {
@@ -47,12 +48,12 @@ impl Scope {
         rhs: &Token,
     ) -> Result<ValueRc, RuntimeError> {
         match op {
-            '|' => self.do_feed(lhs, rhs),
+            ':' => self.do_feed(lhs, rhs),
             '=' => {
                 self.do_assign(lhs, rhs)?;
                 Ok(rc_cell(Value::Null))
             }
-            ':' => self.do_call(lhs, rhs),
+            '!' => self.do_call(lhs, rhs),
             _ => Err(RuntimeError::new(format!(
                 "[Execute] Operator \'{}\' is not supported",
                 op

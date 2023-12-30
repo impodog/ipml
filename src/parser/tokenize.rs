@@ -2,11 +2,23 @@ use super::*;
 use crate::prelude::*;
 
 fn parse_slice(result: &mut BlockVec, slice: &[Token]) -> usize {
+    if slice.is_empty() {
+        return 0;
+    }
     let mut i = 0;
+    let mut decor = BlockDecorator::None;
     while i < slice.len() {
         match slice[i] {
+            Token::Decorator(decor_) => {
+                decor = decor_;
+                i += 1;
+            }
             Token::Operator('(') => {
                 let mut block = BlockVec::new();
+
+                block.set_decor(decor);
+                decor = BlockDecorator::None;
+
                 i += parse_slice(&mut block, &slice[i + 1..]);
                 result.push(Token::Block(block));
             }
@@ -149,6 +161,9 @@ impl Parser {
                 "true" => Ok(Token::Value(Value::Bool(true))),
                 "false" => Ok(Token::Value(Value::Bool(false))),
                 "null" => Ok(Token::Value(Value::Null)),
+                "fn" => Ok(Token::Decorator(BlockDecorator::Functor)),
+                "subsc" => Ok(Token::Decorator(BlockDecorator::SubScope)),
+                "indep" => Ok(Token::Decorator(BlockDecorator::IndepScope)),
                 _ => Ok(Token::Symbol(symbol)),
             }
         } else {

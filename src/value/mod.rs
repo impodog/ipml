@@ -1,4 +1,4 @@
 mod feed_impl;
 mod value;
 
-pub use value::{BlockVec, Functor, FunctorInner, Token, Value, ValueRc};
+pub use value::{BlockDecorator, BlockVec, Functor, FunctorInner, Token, Value, ValueRc};

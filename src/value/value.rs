@@ -19,13 +19,25 @@ impl Functor {
     }
 }
 
+impl PartialEq for Functor {
+    fn eq(&self, other: &Self) -> bool {
+        return self as *const Self == other as *const Self;
+    }
+}
+
+impl PartialOrd for Functor {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        return (self as *const Self).partial_cmp(&(other as *const Self));
+    }
+}
+
 impl std::fmt::Debug for Functor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Functor({:x})", self as *const Functor as usize)
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Value {
     Int(isize),
     Float(f64),
@@ -36,6 +48,20 @@ pub enum Value {
     Null,
 }
 
+impl Value {
+    pub fn to_bool(&self) -> bool {
+        match self {
+            Value::Int(i) => *i != 0,
+            Value::Float(f) => *f != 0.0,
+            Value::Bool(b) => *b,
+            Value::Str(s) => !s.is_empty(),
+            Value::List(l) => !l.is_empty(),
+            Value::Functor(_) => true,
+            Value::Null => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Token {
     Value(Value),
@@ -43,14 +69,23 @@ pub enum Token {
     Tag(Vec<String>),
     Block(BlockVec),
     Operator(char),
+    Decorator(BlockDecorator),
 }
 
 #[derive(Debug, Clone)]
-pub struct BlockVec(Vec<Token>);
+pub struct BlockVec(Vec<Token>, BlockDecorator);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlockDecorator {
+    None,
+    Functor,
+    SubScope,
+    IndepScope,
+}
 
 impl BlockVec {
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self(Vec::new(), BlockDecorator::None)
     }
 
     pub fn push(&mut self, token: Token) {
@@ -69,8 +104,17 @@ impl BlockVec {
         self.0.is_empty()
     }
 
+    pub fn set_decor(&mut self, decor: BlockDecorator) {
+        self.1 = decor;
+    }
+
     #[inline(always)]
     pub fn data(&self) -> &Vec<Token> {
         &self.0
+    }
+
+    #[inline(always)]
+    pub fn decor(&self) -> &BlockDecorator {
+        &self.1
     }
 }

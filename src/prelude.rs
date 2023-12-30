@@ -5,9 +5,13 @@ pub use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 pub use std::rc::{Rc, Weak};
 
 pub use crate::error::*;
+pub use crate::init::*;
 pub use crate::parser::*;
 pub use crate::scope::*;
 pub use crate::value::*;
+
+pub static ANONYMOUS: &'static str = "[anonymous]";
+pub static RETURN: &'static str = "ret";
 
 pub(crate) type RcCell<T> = Rc<RefCell<T>>;
 
@@ -27,11 +31,4 @@ where
     T: Clone,
 {
     Rc::new((*v).clone())
-}
-
-#[macro_export]
-macro_rules! string_list {
-    ($($x:expr),*) => {
-        [$(String::from($x)),*]
-    };
 }

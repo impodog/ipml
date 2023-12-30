@@ -15,7 +15,7 @@ pub trait Feed
 where
     Self: Debug + Display,
 {
-    fn feed(&mut self, _token: &Token) -> Result<ValueRc, RuntimeError> {
+    fn feed(&mut self, _token: &Token) -> Result<(), RuntimeError> {
         not_implemented!(self, feed)
     }
 
@@ -25,10 +25,8 @@ where
 }
 
 impl Feed for Scope {
-    fn feed(&mut self, token: &Token) -> Result<ValueRc, RuntimeError> {
+    fn feed(&mut self, token: &Token) -> Result<(), RuntimeError> {
         match token {
-            Token::Value(value) => Ok(rc_cell(value.clone())),
-            Token::Symbol(name) => Ok(self.query_value(name)),
             Token::Block(block) => {
                 if block.len() % 3 != 0 {
                     return Err(RuntimeError::new(format!(
@@ -37,7 +35,6 @@ impl Feed for Scope {
                     )));
                 }
                 let mut i = 0;
-                let mut result = rc_cell(Value::Null);
                 while i < block.len() {
                     let lhs = &block.data()[i];
                     let op = match &block.data()[i + 1] {
@@ -51,13 +48,20 @@ impl Feed for Scope {
                         }
                     };
                     let rhs = &block.data()[i + 2];
-                    result = self.execute(lhs, *op, rhs)?;
+                    let result = self.execute(lhs, *op, rhs)?;
+                    if match &*result.borrow() {
+                        Value::Null => false,
+                        _ => true,
+                    } {
+                        self.set_value(&[RETURN.to_string()], result)?;
+                    }
                     i += 3;
                 }
-                Ok(result)
+                self.cleanup();
+                Ok(())
             }
             _ => Err(RuntimeError::new(format!(
-                "[Scope] Scope can only be fed with values, symbols, or blocks instead of {}",
+                "[Scope] Scope can only be fed with blocks instead of {}",
                 token
             ))),
         }

@@ -76,16 +76,25 @@ impl Scope {
         }
     }
 
-    pub fn set_value(&mut self, name: &[String], value: ValueRc) {
+    pub fn set_value(&mut self, name: &[String], value: ValueRc) -> Result<(), RuntimeError> {
         match name.len() {
-            0 => {}
+            0 => Ok(()),
             1 => {
                 self.values.insert(name[0].clone(), value);
+                Ok(())
             }
             _ => {
-                self.touch_scope(&name[0])
-                    .borrow_mut()
-                    .set_value(&name[1..], value);
+                self.query_scope(&name[0..name.len() - 1])
+                    .try_borrow_mut()
+                    .map_err(|_| {
+                        RuntimeError::new(format!(
+                            "[Scope] Setting the value of {} and so making it mutable, is illegal",
+                            name.join(".")
+                        ))
+                    })?
+                    .values
+                    .insert(name[name.len() - 1].clone(), value);
+                Ok(())
             }
         }
     }
@@ -185,7 +194,7 @@ impl Scope {
             Ok(())
         } else {
             Err(RuntimeError::new(format!(
-                "[Scope] Scope {} already has a parent and cannot be linked",
+                "[Scope] {} already has a parent and cannot be linked",
                 child.borrow()
             )))
         }
@@ -197,5 +206,10 @@ impl Scope {
 
     pub(crate) fn get_scopes(&self) -> &HashMap<String, ScopeRc> {
         &self.scopes
+    }
+
+    pub(crate) fn cleanup(&mut self) {
+        //let _ = self.scopes.remove(ANONYMOUS);
+        //let _ = self.values.remove(RETURN);
     }
 }

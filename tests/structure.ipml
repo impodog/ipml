@@ -1,8 +1,14 @@
-[msg] | (
-    value =
-"
-Hello, world!
-And there we go.
-"
+[b]: (
+    C = true
+    [dat]: (
+        x = 5
+    )
+    B = fn (
+        print! ( V = dat.x )
+        sub!   ( A = dat.x  B = 1)
+        dat.x = ret
+        ne!    ( A = dat.x  B = -10)
+    )
 )
-print:[msg]
+
+while! [b]

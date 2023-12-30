@@ -7,7 +7,7 @@ impl Display for Token {
             Token::Value(value) => write!(f, "{}", value)?,
             Token::Symbol(name) => write!(f, "{}", name.join("."))?,
             Token::Tag(name) => write!(f, "[{}]", name.join("."))?,
-            Token::Block(block) => {
+            Token::Block(_block) => {
                 /*
                 write!(f, "{{")?;
                 let mut first = true;
@@ -24,6 +24,7 @@ impl Display for Token {
                 write!(f, "{{Block}}")?;
             }
             Token::Operator(op) => write!(f, "{}", op)?,
+            Token::Decorator(decor) => write!(f, "{:?}", decor)?,
         }
         write!(f, ")")?;
         Ok(())
