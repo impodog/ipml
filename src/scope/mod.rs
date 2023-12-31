@@ -4,4 +4,4 @@ mod feed_impl;
 mod scope;
 
 pub use feed::Feed;
-pub use scope::{Scope, ScopeRc};
+pub use scope::{Scope, ScopeMode, ScopeRc};

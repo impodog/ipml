@@ -1,0 +1,53 @@
+# Here are some built-in external functors and their usages
+
+# Debug
+print!( V = "foo" )
+
+
+
+# Flow Control
+if!(
+    C = "bar"
+    T = fn (
+        print! ( V = "yes" )
+    )
+    F = fn (
+        print! ( V = "no" )
+    )
+)
+ret!()
+
+while!(
+    # Beginning condition, if true, while block is equivalent to a do-while block
+    C = true
+
+    # Data jump point
+    [data] : (
+        count = 0
+    )
+
+    # While body
+    B = fn (
+        print!( V = data.count )
+        add!( A = data.count  B = 1 )
+        data.count = ret
+        ne!( A = data.count  B = 10)
+    )
+)
+
+# There are also calculations (add, sub, mul, div) and comparison (eq, ne, lt, le, gt, ge)
+
+
+
+# List Operations (push_back, push_front, pop_back, pop_front, index, size, empty, clear, replace)
+l = ( 1 2 3 4 5 6 )
+size!( L ~ l )
+print!( V = ret )
+
+
+
+# Global Modification (shown is default value)
+mode!(
+    # Whether to filter functor and names prefixed with underscore
+    filter = false
+)

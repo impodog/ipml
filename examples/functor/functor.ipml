@@ -1,0 +1,15 @@
+# Defining new functor
+f = fn (
+    # Setting the return value, which will be carried out of this space
+    ret = 1
+)
+
+# Call a functor
+# Here the parentheses is an empty scope, which is where the functor will be executed. You'll see why.
+f!()
+# Collect the return value
+val ~ ret
+
+# Call a functor, but with scope settings
+# Here in the scope, val is shallow-copied to V, which can be used by the print functor
+print! ( V ~ val )

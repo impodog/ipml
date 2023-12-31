@@ -1,3 +1,8 @@
+v0.4.0
+- Better querying system with linking operator '~'
+- Add scope modes
+- Add README.md and examples
+
 v0.3.0
 - Add custom functor and block decorators
 - Add default non-user functor

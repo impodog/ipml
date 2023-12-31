@@ -1,0 +1,19 @@
+# Int
+a = 1
+
+# Float
+b = 3.14
+
+# Str
+c = "Welcome"
+
+# List
+d = (
+    1 2 3 "Hello" 6.28
+    (2 3.3)
+)
+
+# Functor
+e = fn (
+    # Functor body
+)

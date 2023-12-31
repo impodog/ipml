@@ -1,0 +1,15 @@
+[root] : (
+    val = 10
+)
+
+# The '=' copy gives a fresh copy, which is independent to the one that is copied
+[copy1] = [root]
+root.val = 9
+print! ( V = root.val )
+print! ( V = copy1.val )
+
+# However, the '~' copy gives a pointer-only shallow copy, which will mutate along with the original one
+[copy2] ~ [root]
+root.val = 8
+print! ( V = root.val )
+print! ( V = copy2.val )

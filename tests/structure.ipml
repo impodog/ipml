@@ -1,14 +1,5 @@
-[b]: (
-    C = true
-    [dat]: (
-        x = 5
-    )
-    B = fn (
-        print! ( V = dat.x )
-        sub!   ( A = dat.x  B = 1)
-        dat.x = ret
-        ne!    ( A = dat.x  B = -10)
-    )
+mode! (
+    filter = true
 )
 
-while! [b]
+a = 3

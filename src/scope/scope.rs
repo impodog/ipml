@@ -2,6 +2,17 @@ use crate::prelude::*;
 
 pub type ScopeRc = RcCell<Scope>;
 
+#[derive(Debug, Clone, Copy)]
+pub struct ScopeMode {
+    pub filter: bool,
+}
+
+impl Default for ScopeMode {
+    fn default() -> Self {
+        Self { filter: false }
+    }
+}
+
 #[derive(Debug)]
 pub struct Scope {
     values: HashMap<String, ValueRc>,
@@ -10,6 +21,9 @@ pub struct Scope {
     // Don't do anything with this pointer, it's just a reference to the parent scope
     // If everything works correctly, this should never be dangling
     parent: *mut Scope,
+    depth: usize,
+
+    pub mode: ScopeMode,
 }
 
 impl Clone for Scope {
@@ -18,6 +32,8 @@ impl Clone for Scope {
             values: self.values.clone(),
             scopes: self.scopes.clone(),
             parent: std::ptr::null_mut(),
+            depth: self.depth,
+            mode: self.mode,
         }
     }
 }
@@ -28,17 +44,15 @@ impl Scope {
             values: HashMap::new(),
             scopes: HashMap::new(),
             parent: std::ptr::null_mut(),
+            depth: 0,
+            mode: Default::default(),
         }
     }
 
-    pub fn with_parent(name: String, parent: &mut Scope) -> ScopeRc {
-        let child = rc_cell(Self {
-            values: HashMap::new(),
-            scopes: HashMap::new(),
-            parent,
-        });
-        parent.scopes.insert(name, child.clone());
-        child
+    pub fn with_parent(name: String, parent: &mut Scope) -> Result<ScopeRc, RuntimeError> {
+        let child = rc_cell(Self::new());
+        parent.link_child(&name, child.clone())?;
+        Ok(child)
     }
 
     fn get_value(&self, name: &str) -> Option<ValueRc> {
@@ -65,14 +79,17 @@ impl Scope {
         }
     }
 
-    pub fn query_value(&mut self, name: &[String]) -> ValueRc {
+    pub fn query_value(&mut self, name: &[String]) -> Result<ValueRc, RuntimeError> {
         match name.len() {
-            0 => rc_cell(Value::Null),
-            1 => self.touch_value(&name[0]),
-            _ => self
-                .query_scope(&name[0..name.len() - 1])
+            0 => Err(RuntimeError::new(format!(
+                "[Scope] Expected at least one name, but got {}",
+                name.len()
+            ))),
+            1 => Ok(self.touch_value(&name[0])),
+            _ => Ok(self
+                .query_scope(&name[0..name.len() - 1])?
                 .borrow_mut()
-                .touch_value(&name[name.len() - 1]),
+                .touch_value(&name[name.len() - 1])),
         }
     }
 
@@ -84,7 +101,7 @@ impl Scope {
                 Ok(())
             }
             _ => {
-                self.query_scope(&name[0..name.len() - 1])
+                self.query_scope(&name[0..name.len() - 1])?
                     .try_borrow_mut()
                     .map_err(|_| {
                         RuntimeError::new(format!(
@@ -109,21 +126,28 @@ impl Scope {
         }
     }
 
-    fn touch_scope(&mut self, name: &str) -> ScopeRc {
+    fn touch_scope(&mut self, name: &str) -> Result<ScopeRc, RuntimeError> {
         if let Some(scope) = self.scopes.get(name) {
-            scope.clone()
+            Ok(scope.clone())
         } else {
-            let scope = Self::with_parent(name.to_string(), self);
-            scope
+            let scope = Self::with_parent(name.to_string(), self)?;
+            Ok(scope)
         }
     }
 
-    fn query_scope_help(&mut self, name: &[String], is_begin: bool) -> ScopeRc {
+    fn query_scope_help(
+        &mut self,
+        name: &[String],
+        is_begin: bool,
+    ) -> Result<ScopeRc, RuntimeError> {
         match name.len() {
-            0 => rc_cell(self.clone()),
+            0 => Err(RuntimeError::new(format!(
+                "[Scope] Expected at least one name, but got {}",
+                name.len()
+            ))),
             1 => {
                 if let Some(scope) = self.get_scope(&name[0]) {
-                    scope
+                    Ok(scope)
                 } else {
                     self.touch_scope(&name[0])
                 }
@@ -133,12 +157,12 @@ impl Scope {
                     if let Some(scope) = self.get_scope(&name[0]) {
                         scope.borrow_mut().query_scope_help(&name[1..], false)
                     } else {
-                        self.touch_scope(&name[0])
+                        self.touch_scope(&name[0])?
                             .borrow_mut()
                             .query_scope_help(&name[1..], false)
                     }
                 } else {
-                    self.touch_scope(&name[0])
+                    self.touch_scope(&name[0])?
                         .borrow_mut()
                         .query_scope_help(&name[1..], false)
                 }
@@ -146,9 +170,8 @@ impl Scope {
         }
     }
 
-    pub fn query_scope(&mut self, name: &[String]) -> ScopeRc {
-        let scope = self.query_scope_help(name, true);
-        scope
+    pub fn query_scope(&mut self, name: &[String]) -> Result<ScopeRc, RuntimeError> {
+        self.query_scope_help(name, true)
     }
 
     pub fn set_scope(&mut self, name: &[String], scope: ScopeRc) -> Result<(), RuntimeError> {
@@ -156,13 +179,38 @@ impl Scope {
             0 => Ok(()),
             1 => self.link_child(&name[0], scope),
             _ => self
-                .touch_scope(&name[0])
+                .touch_scope(&name[0])?
                 .borrow_mut()
                 .set_scope(&name[1..], scope),
         }
     }
 
-    pub fn insert_functor(&mut self, name: &[String], functor: impl FunctorInner + 'static) {
+    pub fn link_scope(&mut self, name: &[String], scope: ScopeRc) -> Result<(), RuntimeError> {
+        match name.len() {
+            0 => Ok(()),
+            1 => {
+                if scope.borrow().is_parent_of(self) {
+                    return Err(RuntimeError::new(format!(
+                        "[Scope] {} and {} are related and cannot be linked, otherwise it will cause memory leaks",
+                        self,
+                        scope.borrow()
+                    )));
+                }
+                self.scopes.insert(name[0].clone(), scope);
+                Ok(())
+            }
+            _ => self
+                .touch_scope(&name[0])?
+                .borrow_mut()
+                .link_scope(&name[1..], scope),
+        }
+    }
+
+    pub fn insert_functor(
+        &mut self,
+        name: &[String],
+        functor: impl FunctorInner + 'static,
+    ) -> Result<(), RuntimeError> {
         match name.len() {
             0 => {}
             1 => {
@@ -172,11 +220,12 @@ impl Scope {
                 );
             }
             _ => {
-                self.touch_scope(&name[0])
+                self.touch_scope(&name[0])?
                     .borrow_mut()
-                    .insert_functor(&name[1..], functor);
+                    .insert_functor(&name[1..], functor)?;
             }
         }
+        Ok(())
     }
 
     pub fn get_parent(&self) -> Option<&mut Scope> {
@@ -187,9 +236,32 @@ impl Scope {
         }
     }
 
+    // This function checks whether the two scopes are related, so as to prevent memory leaks
+    pub fn is_parent_of(&self, other: &Scope) -> bool {
+        if self.depth >= other.depth {
+            return false;
+        }
+        let mut parent = other.get_parent();
+        while let Some(p) = parent {
+            if p.depth == self.depth {
+                return p as *const Scope == self as *const Scope;
+            }
+            parent = p.get_parent();
+        }
+        false
+    }
+
     pub fn link_child(&mut self, name: &str, child: ScopeRc) -> Result<(), RuntimeError> {
-        if child.borrow().parent.is_null() {
+        if child.borrow().is_parent_of(self) {
+            return Err(RuntimeError::new(format!(
+                "[Scope] {} and {} are related and cannot be linked, otherwise it will cause memory leaks",
+                self,
+                child.borrow()
+            )));
+        } else if child.borrow().parent.is_null() {
             child.borrow_mut().parent = self;
+            child.borrow_mut().depth = self.depth + 1;
+            child.borrow_mut().mode = self.mode;
             self.scopes.insert(name.to_string(), child);
             Ok(())
         } else {
@@ -208,8 +280,36 @@ impl Scope {
         &self.scopes
     }
 
-    pub(crate) fn cleanup(&mut self) {
-        //let _ = self.scopes.remove(ANONYMOUS);
-        //let _ = self.values.remove(RETURN);
+    pub(crate) fn cleanup_temp(&mut self) {
+        if self.mode.filter {
+            let _ = self.scopes.remove(ANONYMOUS);
+            let _ = self.values.remove(RETURN);
+        }
+    }
+
+    pub fn cleanup(&mut self) {
+        if self.mode.filter {
+            for (_, v) in self.scopes.iter() {
+                v.borrow_mut().cleanup();
+            }
+
+            let mut to_remove = Vec::new();
+            for (k, v) in self.values.iter() {
+                let mut flag = false;
+                match &*v.borrow() {
+                    Value::Functor(_) => flag = true,
+                    _ => {}
+                }
+                if let Some('_') = k.chars().nth(0) {
+                    flag = true;
+                }
+                if flag {
+                    to_remove.push(k.clone());
+                }
+            }
+            for k in to_remove {
+                self.values.remove(&k);
+            }
+        }
     }
 }

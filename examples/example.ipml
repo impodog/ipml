@@ -1,0 +1,8 @@
+# This is a simple structural file
+
+foo = "Hello!"
+
+[my_scope] : (
+    bar = 3.1415
+)
+my_scope.condition = true

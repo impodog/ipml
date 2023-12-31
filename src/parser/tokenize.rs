@@ -174,6 +174,22 @@ impl Parser {
     fn next_operator(&mut self) -> Result<Token, SyntaxError> {
         Ok(Token::Operator(self.next().unwrap()))
     }
+
+    fn next_after_comment(&mut self) -> Option<Result<Token, SyntaxError>> {
+        loop {
+            match self.peek() {
+                None => return None,
+                Some('\n') => {
+                    self.next();
+                    break;
+                }
+                _ => {
+                    self.next();
+                }
+            }
+        }
+        self.tokenize()
+    }
 }
 
 impl Tokenize for Parser {
@@ -188,6 +204,7 @@ impl Tokenize for Parser {
                 '"' => Some(self.next_string()),
                 '[' => Some(self.next_tag()),
                 'a'..='z' | 'A'..='Z' | '_' | '$' => Some(self.next_ident()),
+                '#' => self.next_after_comment(),
                 _ => Some(self.next_operator()),
             }
         } else {

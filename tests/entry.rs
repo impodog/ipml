@@ -19,8 +19,9 @@ mod tests {
 
     fn run(token: Token) {
         let mut scope = Scope::new();
-        init_functor(&mut scope);
+        init_functor(&mut scope).unwrap();
         let result = scope.feed(&token);
+        scope.cleanup();
         match result {
             Ok(_) => {}
             Err(e) => println!("{}", e),
@@ -36,6 +37,6 @@ mod tests {
 
     #[test]
     fn test_structure() {
-        entry("tests/structure.ipml");
+        entry("examples/functor/external.ipml");
     }
 }

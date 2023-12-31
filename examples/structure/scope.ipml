@@ -1,0 +1,22 @@
+# Directly feeding into Scope
+[scope1] :  (
+    msg = "Hello, world!"
+    count = 1
+)
+
+# And you can do this again without erasing previous contents
+[scope1] : (
+    new_msg = "Welcome to IPML!"
+)
+
+# Or, you can externally access a scope, even create a new field
+scope1.new_count = 2
+
+# An example of the searching method
+[scope2] : (
+    # Here, scope1 is the external one, rather than a newly created one
+    msg_copy = scope1.msg
+)
+
+# You may also implicitly create scopes
+dog.breed.name = "Husky"

@@ -57,7 +57,7 @@ impl Feed for Scope {
                     }
                     i += 3;
                 }
-                self.cleanup();
+                self.cleanup_temp();
                 Ok(())
             }
             _ => Err(RuntimeError::new(format!(

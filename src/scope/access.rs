@@ -3,7 +3,7 @@ use crate::prelude::*;
 impl Scope {
     pub(crate) fn to_scope(&mut self, token: &Token) -> Result<ScopeRc, RuntimeError> {
         match token {
-            Token::Tag(name) => Ok(self.query_scope(name)),
+            Token::Tag(name) => Ok(self.query_scope(name)?),
             _ => {
                 if let Token::Block(block) = token {
                     match block.decor() {
@@ -20,7 +20,7 @@ impl Scope {
 
     pub(crate) fn to_subscope(&mut self, token: &Token) -> Result<ScopeRc, RuntimeError> {
         match token {
-            Token::Tag(name) => Ok(self.query_scope(name)),
+            Token::Tag(name) => Ok(self.query_scope(name)?),
             _ => {
                 if let Token::Block(block) = token {
                     match block.decor() {
@@ -28,7 +28,7 @@ impl Scope {
                         _ => {}
                     }
                 }
-                let scope = Scope::with_parent(ANONYMOUS.to_string(), self);
+                let scope = Scope::with_parent(ANONYMOUS.to_string(), self)?;
                 scope.borrow_mut().feed(token)?;
                 Ok(scope)
             }
@@ -47,7 +47,7 @@ impl Scope {
         let token = Token::Block(block.clone());
         Ok(rc_cell(Value::Functor(Functor::new(move |scope| {
             scope.feed(&token)?;
-            Ok(scope.query_value(&[RETURN.to_string()]))
+            Ok(scope.query_value(&[RETURN.to_string()])?)
         }))))
     }
 
@@ -56,8 +56,8 @@ impl Scope {
         token: &Token,
     ) -> Result<Rc<RefCell<dyn Feed>>, RuntimeError> {
         match token {
-            Token::Symbol(name) => Ok(self.query_value(name)),
-            Token::Tag(name) => Ok(self.query_scope(name)),
+            Token::Symbol(name) => Ok(self.query_value(name)?),
+            Token::Tag(name) => Ok(self.query_scope(name)?),
             Token::Block(_block) => Ok(self.to_scope(token)?),
             _ => Err(RuntimeError::new(format!(
                 "[Feed] Expected feedable type (including symbols, tags, and blocks(aka implicit scopes)), but got {}",
@@ -69,7 +69,7 @@ impl Scope {
     pub(crate) fn as_true_value(&mut self, token: &Token) -> Result<ValueRc, RuntimeError> {
         match token {
             Token::Value(value) => Ok(rc_cell(value.clone())),
-            Token::Symbol(name) => Ok(self.query_value(name)),
+            Token::Symbol(name) => Ok(rc_clone(self.query_value(name)?)),
             Token::Block(block) => {
                 match block.decor() {
                     BlockDecorator::Functor => self.to_functor(block),
@@ -78,6 +78,23 @@ impl Scope {
             },
             _ => Err(RuntimeError::new(format!(
                 "[Eval] Expected value-convertible type (including literal values, symbols, and blocks(aka lists)), but got {}",
+                token
+            ))),
+        }
+    }
+
+    pub(crate) fn as_linked_value(&mut self, token: &Token) -> Result<ValueRc, RuntimeError> {
+        match token {
+            Token::Value(value) => Ok(rc_cell(value.clone())),
+            Token::Symbol(name) => Ok(self.query_value(name)?),
+            Token::Block(block) => {
+                match block.decor() {
+                    BlockDecorator::Functor => self.to_functor(block),
+                    _ => self.to_list(block),
+                }
+            },
+            _ => Err(RuntimeError::new(format!(
+                "[LinkEval] Expected value-convertible type (including literal values, symbols, and blocks(aka lists)), but got {}",
                 token
             ))),
         }
